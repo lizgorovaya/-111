@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Авторизация</title>
+    <link rel="stylesheet" href="css/auto.css">
+</head>
+<body>
+    <div class="container" autocomplete="on">
+        <p>АВТОРИЗАЦИЯ</p>
+        <input id="username" type="text" placeholder="Логин" autocomplete="username" required>
+        <input id="password" type="password" placeholder="Пароль" autocomplete="current-password" required>
+        <a href="registration.html">ЗАРЕГИСТРИРУЙСЯ</a>
+        <button type="submit" id="loginBtn">ВОЙТИ</button>
+    </div>
+</body>
+<script>
+
+let userRoles = []; // Глобальная переменная для хранения ролей
+
+document.getElementById("loginBtn").addEventListener("click", async function () {
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value.trim();
+
+    try {
+        const loginResponse = await fetch("http://localhost:8080/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password }),
+        });
+
+        if (!loginResponse.ok) {
+            const errorData = await loginResponse.json();
+            alert(errorData.error || "Ошибка авторизации");
+            return;
+        }
+
+        const loginData = await loginResponse.json();
+
+        // Преобразуем роли
+        userRoles = Array.isArray(loginData.role)
+            ? loginData.role.map((role) => role.trim())
+            : [];
+
+        // Логируем данные
+        console.log("Роли пользователя:", userRoles);
+
+        // Сохраняем в sessionStorage
+        sessionStorage.setItem("userRoles", JSON.stringify(userRoles));
+        sessionStorage.setItem("username", loginData.username);
+        sessionStorage.setItem("userId", loginData.id);
+
+        // Перенаправляем пользователя
+        if (userRoles.includes("ROLE_ADMIN")) {
+            window.location.href = "admin.html";
+        } else {
+            window.location.href = "general.html";
+        }
+    } catch (error) {
+        alert("Произошла ошибка. Попробуйте еще раз.");
+        console.error("Ошибка авторизации:", error);
+    }
+});
+
+function logout() {
+    userRoles = []; // Очищаем глобальную переменную
+    sessionStorage.removeItem("userRoles"); // Очищаем sessionStorage
+    
+    // Отправляем запрос на сервер для очистки данных
+    fetch('http://localhost:8080/api/auth/logout', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Ошибка при очистке данных о пользователе');
+        }
+        alert("Вы вышли из системы и данные о пользователе очищены");
+        window.location.href = 'login.html'; // Перенаправление на страницу входа
+    })
+    .catch(error => {
+        console.error("Ошибка при выходе:", error);
+        alert("Ошибка при выходе из системы.");
+    });
+}
+
+
+</script>
+</html>
